@@ -3,8 +3,8 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            steps {
-                git 'https://github.com/<your-username>/blue-green-deployment.git'
+            steps 
+                git ' https://github.com/Asfand543/bluegreen.git'
             }
         }
 
