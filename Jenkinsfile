@@ -23,10 +23,29 @@ pipeline {
         }
 
         stage('Test Blue Environment') {
-            steps {
-                bat 'curl -f http://localhost:8080 || exit 1'
+          steps {
+             script {
+             // Wait for services to be ready
+                bat 'timeout 30 | docker-compose logs -f nginx &'
+                bat 'timeout 10'
+            
+             // Test with retry logic
+                bat '''
+                    set MAX_RETRIES=5
+                    set RETRY_COUNT=0
+                   :RETRY
+                    curl -f http://localhost:8080/ || (
+                      echo "Attempt !RETRY_COUNT! failed, waiting 5 seconds..."
+                       timeout 5
+                       set /a RETRY_COUNT+=1
+                       if !RETRY_COUNT! leq !MAX_RETRIES! goto RETRY
+                       exit 1
+                     )
             }
+           }    '''
         }
+    
+
 
         stage('Switch to Green Environment') {
             steps {
