@@ -52,7 +52,8 @@ pipeline {
                                  '''
 
                     }
-                    bat 'docker exec nginx nginx -s reload'
+                    bat 'docker exec nginx2-web-1 nginx -s reload || echo "Nginx reload skipped, container not running"'
+
                 }
             }
         }
