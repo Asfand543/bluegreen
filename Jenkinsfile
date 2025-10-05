@@ -12,7 +12,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    def color = bat(script: 'cat current_color.txt', returnStdout: true).trim()
+                    def color = bat(script: 'type current_color.txt', returnStdout: true).trim()
                     if (color == 'blue') {
                         bat 'docker-compose -f docker-compose-green.yml build'
                     } else {
@@ -25,7 +25,7 @@ pipeline {
         stage('Deploy New Version') {
             steps {
                 script {
-                    def color = bat(script: 'cat current_color.txt', returnStdout: true).trim()
+                    def color = bat(script: 'type current_color.txt', returnStdout: true).trim()
                     if (color == 'blue') {
                         bat 'docker-compose -f docker-compose-green.yml up -d'
                         bat "echo 'green' > current_color.txt"
@@ -40,7 +40,7 @@ pipeline {
         stage('Switch Traffic') {
             steps {
                 script {
-                    def color = bat(script: 'cat current_color.txt', returnStdout: true).trim()
+                    def color = bat(script: 'type current_color.txt', returnStdout: true).trim()
                     if (color == 'green') {
                         bat "sed -i 's/8081/8082/' nginx.conf"
                     } else {
