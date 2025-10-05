@@ -1,109 +1,61 @@
 pipeline {
     agent any
-    
-    environment {
-        DOCKER_HOST = "tcp://localhost:2375"
-    }
-    
+
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
-                checkout scm
+                git 'https://github.com/Asfand443/bluegreen.git'
             }
         }
-        
-        stage('Build Docker Images') {
-            steps {
-                bat 'docker build -t blue-app:latest ./app'
-                bat 'docker build -t green-app:latest ./app'
-            }
-        }
-        
-        stage('Clean Previous Deployment') {
-            steps {
-                bat '''
-                    docker-compose down || true
-                    docker rm -f nginx2-blue nginx2-green nginx2-nginx || true
-                '''
-            }
-        }
-        
-        stage('Deploy Blue Environment') {
-            steps {
-                bat 'docker-compose up -d blue nginx'
-            }
-        }
-        
-        stage('Wait for Services') {
-            steps {
-                bat 'timeout 10'
-            }
-        }
-        
-        stage('Test Blue Environment') {
+
+        stage('Build Docker Image') {
             steps {
                 script {
-                    try {
-                        bat 'curl -f http://localhost:8080/ || exit 0'
-                    } catch (Exception e) {
-                        echo "Blue environment test failed, but continuing..."
+                    def color = bat(script: 'cat current_color.txt', returnStdout: true).trim()
+                    if (color == 'blue') {
+                        bat 'docker-compose -f docker-compose-green.yml build'
+                    } else {
+                        bat 'docker-compose -f docker-compose-blue.yml build'
                     }
                 }
             }
         }
-        
-        stage('Deploy Green Environment') {
-            steps {
-                bat 'docker-compose up -d green'
-            }
-        }
-        
-        stage('Test Green Environment') {
+
+        stage('Deploy New Version') {
             steps {
                 script {
-                    try {
-                        bat 'curl -f http://localhost:8080/ || exit 0'
-                    } catch (Exception e) {
-                        echo "Green environment test failed, but continuing..."
+                    def color = bat(script: 'cat current_color.txt', returnStdout: true).trim()
+                    if (color == 'blue') {
+                        bat 'docker-compose -f docker-compose-green.yml up -d'
+                        bat "echo 'green' > current_color.txt"
+                    } else {
+                        bat 'docker-compose -f docker-compose-blue.yml up -d'
+                        bat "echo 'blue' > current_color.txt"
                     }
                 }
             }
         }
-        
-        stage('Switch Traffic to Green') {
+
+        stage('Switch Traffic') {
             steps {
                 script {
-                    // Update nginx configuration to prefer green
-                    bat '''
-                        echo "Switching traffic to green environment..."
-                        docker-compose restart nginx
-                    '''
+                    def color = bat(script: 'cat current_color.txt', returnStdout: true).trim()
+                    if (color == 'green') {
+                        bat "sed -i 's/8081/8082/' nginx.conf"
+                    } else {
+                        bat "sed -i 's/8082/8081/' nginx.conf"
+                    }
+                    bat 'docker exec nginx nginx -s reload'
                 }
             }
         }
-        
-        stage('Clean Up Old Blue Containers') {
+
+        stage('Clean Old Version') {
             steps {
-                bat '''
-                    docker-compose stop blue || true
-                    docker-compose rm -f blue || true
-                '''
+                script {
+                    bat 'docker image prune -f'
+                }
             }
-        }
-    }
-    
-    post {
-        always {
-            echo "Pipeline execution completed"
-            bat 'docker-compose ps'
-        }
-        success {
-            echo "Blue-Green deployment successful!"
-            bat 'curl -s http://localhost:8080/ | findstr "color" || echo "Cannot verify deployment"'
-        }
-        failure {
-            echo "Pipeline failed - check logs above"
-            bat 'docker-compose logs --tail=50'
         }
     }
 }
