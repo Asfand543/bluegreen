@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/Asfand443/bluegreen'
+                git 'https://github.com/Asfand443/bluegreen.git'
             }
         }
 
