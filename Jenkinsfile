@@ -42,9 +42,15 @@ pipeline {
                 script {
                     def color = bat(script: 'type current_color.txt', returnStdout: true).trim()
                     if (color == 'green') {
-                        bat "sed -i 's/8081/8082/' nginx.conf"
+                        powershell '''
+                                   (Get-Content nginx.conf) -replace '8082', '8081' | Set-Content nginx.conf
+                                   '''
+
                     } else {
-                        bat "sed -i 's/8082/8081/' nginx.conf"
+                        powershell '''
+                                  (Get-Content nginx.conf) -replace '8082', '8081' | Set-Content nginx.conf
+                                 '''
+
                     }
                     bat 'docker exec nginx nginx -s reload'
                 }
